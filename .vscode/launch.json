@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter: Run App",
+      "request": "launch",
+      "type": "dart",
+      "program": "expense_mvp_app/lib/main.dart",
+      "cwd": "${workspaceFolder}/expense_mvp_app"
+    }
+  ]
+}

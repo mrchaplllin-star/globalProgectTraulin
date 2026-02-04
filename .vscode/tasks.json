@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Server",
+      "type": "shell",
+      "command": "node server.js",
+      "options": {
+        "cwd": "${workspaceFolder}/expense-mvp-server"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Flutter App",
+      "type": "shell",
+      "command": "flutter run -d 5c9dc87",
+      "options": {
+        "cwd": "${workspaceFolder}/expense_mvp_app"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
