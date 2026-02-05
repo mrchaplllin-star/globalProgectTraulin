@@ -35,11 +35,20 @@ class OpsTotals {
   final double expenses;
 }
 
+List<String> normalizePath(List<String> path) {
+  if (path.isNotEmpty && path.first == 'Головна') {
+    return path.sublist(1);
+  }
+  return path;
+}
+
 bool pathMatches(List<String> opPath, List<String> prefix) {
-  if (prefix.isEmpty) return true;
-  if (opPath.length < prefix.length) return false;
-  for (var i = 0; i < prefix.length; i++) {
-    if (opPath[i] != prefix[i]) return false;
+  final normalizedOpPath = normalizePath(opPath);
+  final normalizedPrefix = normalizePath(prefix);
+  if (normalizedPrefix.isEmpty) return true;
+  if (normalizedOpPath.length < normalizedPrefix.length) return false;
+  for (var i = 0; i < normalizedPrefix.length; i++) {
+    if (normalizedOpPath[i] != normalizedPrefix[i]) return false;
   }
   return true;
 }
