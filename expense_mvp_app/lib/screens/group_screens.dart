@@ -1,13 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import '../config.dart';
 import '../models/tree_node.dart';
 import '../widgets/balance_widget.dart';
 import '../widgets/category_circle_widget.dart';
 import 'operations_screen.dart';
-import '../utils/ops_utils.dart';
 
 class GroupScreen extends StatefulWidget {
   const GroupScreen({
@@ -32,23 +30,19 @@ class _GroupScreenState extends State<GroupScreen> {
   @override
   void initState() {
     super.initState();
-    fetchExpenses();
+    fetchStats();
   }
 
-  Future<void> fetchExpenses() async {
-    final month = DateFormat('yyyy-MM').format(DateTime.now());
+  Future<void> fetchStats() async {
+    final pathValue = widget.path.join('/');
     try {
-      final response = await http.get(Uri.parse('$baseUrl/ops?month=$month'));
+      final response = await http.get(Uri.parse('$baseUrl/stats?path=$pathValue'));
       if (response.statusCode >= 400) return;
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final list = (data['list'] as List<dynamic>? ?? data['items'] as List<dynamic>? ?? [])
-          .map((item) => OpsEntry.fromJson(item as Map<String, dynamic>))
-          .toList();
-      final totals = calculateTotals(list, widget.path);
       if (mounted) {
         setState(() {
-          expensesTotal = totals.expenses;
-          balanceTotal = totals.balance;
+          expensesTotal = (data['totalExpense'] as num?)?.toDouble() ?? 0;
+          balanceTotal = (data['balance'] as num?)?.toDouble() ?? 0;
         });
       }
     } catch (_) {
@@ -125,7 +119,7 @@ class _GroupScreenState extends State<GroupScreen> {
                         ),
                       );
                     }
-                    await fetchExpenses();
+                    await fetchStats();
                   },
                 ),
               ),

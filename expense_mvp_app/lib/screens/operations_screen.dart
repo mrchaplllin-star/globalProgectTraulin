@@ -57,6 +57,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
   void initState() {
     super.initState();
     loadOps();
+    loadStats();
   }
 
   Future<void> loadOps() async {
@@ -74,6 +75,18 @@ class _OperationsScreenState extends State<OperationsScreen> {
       setState(() {
         items = list;
         total = totalValue;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> loadStats() async {
+    final pathValue = widget.groupPath.join('/');
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/stats?path=$pathValue'));
+      if (response.statusCode >= 400) return;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      setState(() {
+        total = (data['balance'] as num?)?.toDouble() ?? 0;
       });
     } catch (_) {}
   }
@@ -98,6 +111,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
       }),
     );
     await loadOps();
+    await loadStats();
   }
 
   @override

@@ -8,7 +8,6 @@ import '../widgets/balance_widget.dart';
 import '../widgets/category_circle_widget.dart';
 import 'group_screens.dart';
 import 'operations_screen.dart';
-import '../utils/ops_utils.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,13 +19,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<TreeNode>> treeFuture;
   double expensesTotal = 0;
-  double balanceTotal = 0;
+  double balanceTotal = 100;
 
   @override
   void initState() {
     super.initState();
     treeFuture = fetchTree();
-    fetchExpenses();
+    fetchStats();
   }
 
   Future<List<TreeNode>> fetchTree() async {
@@ -44,27 +43,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> fetchExpenses() async {
+  Future<void> fetchStats() async {
     try {
-      final month = DateFormat('yyyy-MM').format(DateTime.now());
-      final response = await http.get(Uri.parse('$baseUrl/ops?month=$month'));
+      final response = await http.get(Uri.parse('$baseUrl/stats?path=/'));
       if (response.statusCode >= 400) return;
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final list = (data['list'] as List<dynamic>? ?? data['items'] as List<dynamic>? ?? [])
-          .map((item) => OpsEntry.fromJson(item as Map<String, dynamic>))
-          .toList();
-      final totals = calculateTotals(list, const []);
       if (mounted) {
         setState(() {
-          expensesTotal = totals.expenses;
-          balanceTotal = totals.balance;
+          expensesTotal = (data['totalExpense'] as num?)?.toDouble() ?? 0;
+          balanceTotal = (data['balance'] as num?)?.toDouble() ?? 100;
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
           expensesTotal = 0;
-          balanceTotal = 0;
+          balanceTotal = 100;
         });
       }
     }
@@ -74,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       treeFuture = fetchTree();
     });
-    await fetchExpenses();
+    await fetchStats();
   }
 
   List<TreeNode> _fallbackTree() {
