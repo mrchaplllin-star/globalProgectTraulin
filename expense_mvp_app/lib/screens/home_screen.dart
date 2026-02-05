@@ -8,6 +8,7 @@ import '../widgets/balance_widget.dart';
 import '../widgets/category_circle_widget.dart';
 import 'group_screens.dart';
 import 'operations_screen.dart';
+import '../utils/ops_utils.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,10 +18,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const double baseBalance = 100.0;
-
   late Future<List<TreeNode>> treeFuture;
   double expensesTotal = 0;
+  double balanceTotal = 0;
 
   @override
   void initState() {
@@ -46,19 +46,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> fetchExpenses() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/ops?month='));
+      final month = DateFormat('yyyy-MM').format(DateTime.now());
+      final response = await http.get(Uri.parse('$baseUrl/ops?month=$month'));
       if (response.statusCode >= 400) return;
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final total = (data['total'] as num?)?.toDouble() ?? 0;
+      final list = (data['list'] as List<dynamic>? ?? data['items'] as List<dynamic>? ?? [])
+          .map((item) => OpsEntry.fromJson(item as Map<String, dynamic>))
+          .toList();
+      final totals = calculateTotals(list, const []);
       if (mounted) {
         setState(() {
-          expensesTotal = total;
+          expensesTotal = totals.expenses;
+          balanceTotal = totals.balance;
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
           expensesTotal = 0;
+          balanceTotal = 0;
         });
       }
     }
@@ -126,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 Center(
                   child: BalanceWidget(
-                    balance: baseBalance,
+                    balance: balanceTotal,
                     expenses: expensesTotal,
                   ),
                 ),
