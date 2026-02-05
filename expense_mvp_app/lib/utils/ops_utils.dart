@@ -10,10 +10,16 @@ class OpsEntry {
   final List<String> groupPath;
 
   factory OpsEntry.fromJson(Map<String, dynamic> json) {
-    final rawPath = json['groupPath'];
+    final rawPath = json['groupPath'] ?? json['path'];
     final path = rawPath is List
         ? rawPath.map((part) => part.toString()).toList()
-        : <String>[];
+        : rawPath is String
+            ? rawPath
+                .split('/')
+                .map((part) => part.trim())
+                .where((part) => part.isNotEmpty)
+                .toList()
+            : <String>[];
     return OpsEntry(
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       type: json['type']?.toString() ?? 'expense',
