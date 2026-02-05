@@ -2,8 +2,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() => runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  Intl.defaultLocale = 'uk';
+  await initializeDateFormatting('uk');
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -46,6 +52,8 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
+      locale: const Locale('uk'),
+      supportedLocales: const [Locale('uk')],
       home: const HomePage(),
     );
   }
