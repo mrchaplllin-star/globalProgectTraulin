@@ -85,26 +85,3 @@ app.post("/categories", (req, res) => {
   db.prepare("INSERT OR IGNORE INTO categories (name) VALUES (?)").run(name.trim());
   res.json({ ok: true });
 });
-
-
-app.get("/stats/:yyyyMm", (req, res) => {
-  const yyyyMm = req.params.yyyyMm;
-  const from = `${yyyyMm}-01`;
-  const to = `${yyyyMm}-31`;
-
-  const byCategory = db.prepare(
-    `SELECT category, ROUND(SUM(amount), 2) AS total
-     FROM expenses
-     WHERE date >= ? AND date <= ?
-     GROUP BY category
-     ORDER BY total DESC`
-  ).all(from, to);
-
-  const overall = db.prepare(
-    `SELECT ROUND(COALESCE(SUM(amount), 0), 2) AS total
-     FROM expenses
-     WHERE date >= ? AND date <= ?`
-  ).get(from, to);
-
-  res.json({ total: overall.total, byCategory });
-});
