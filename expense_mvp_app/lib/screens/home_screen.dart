@@ -7,6 +7,7 @@ import '../models/tree_node.dart';
 import '../widgets/balance_widget.dart';
 import '../widgets/category_circle_widget.dart';
 import 'group_screens.dart';
+import 'operations_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -140,15 +141,26 @@ class _HomeScreenState extends State<HomeScreen> {
                         title: node.name,
                         color: colorForGroup(node.name),
                         onTap: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => GroupScreen(
-                                title: node.name,
-                                path: [node.name],
-                                node: node,
+                          if (node.children.isEmpty) {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => OperationsScreen(
+                                  groupName: node.name,
+                                  groupPath: [node.name],
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          } else {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => GroupScreen(
+                                  title: node.name,
+                                  path: [node.name],
+                                  node: node,
+                                ),
+                              ),
+                            );
+                          }
                           await refreshTree();
                         },
                       ),

@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import '../config.dart';
 import '../models/tree_node.dart';
+import '../widgets/balance_widget.dart';
+import '../widgets/category_circle_widget.dart';
+import 'operations_screen.dart';
 
-class GroupScreen extends StatelessWidget {
+class GroupScreen extends StatefulWidget {
   const GroupScreen({
     super.key,
     required this.title,
@@ -17,48 +21,127 @@ class GroupScreen extends StatelessWidget {
   final TreeNode node;
 
   @override
+  State<GroupScreen> createState() => _GroupScreenState();
+}
+
+class _GroupScreenState extends State<GroupScreen> {
+  static const double baseBalance = 100.0;
+  double expensesTotal = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchExpenses();
+  }
+
+  Future<void> fetchExpenses() async {
+    final month = DateFormat('yyyy-MM').format(DateTime.now());
+    final pathValue = widget.path.join('/');
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/ops?path=$pathValue&month=$month'),
+      );
+      if (response.statusCode >= 400) return;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final total = (data['total'] as num?)?.toDouble() ?? 0;
+      if (mounted) {
+        setState(() {
+          expensesTotal = total.abs();
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          expensesTotal = 0;
+        });
+      }
+    }
+  }
+
+  Color colorForGroup(String name) {
+    const palette = [
+      Color(0xFF7A8CFF),
+      Color(0xFF8CD790),
+      Color(0xFFF2C57C),
+      Color(0xFFF28BA8),
+      Color(0xFFA5C8FF),
+      Color(0xFFD2A6FF),
+      Color(0xFF7CDDDD),
+      Color(0xFFB0B0B0),
+    ];
+    return palette[name.hashCode.abs() % palette.length];
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final children = widget.node.children;
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(widget.title)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            path.join(' - '),
+            widget.path.join(' - '),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          ...node.children.map(
-            (child) => ListTile(
-              title: Text(child.name),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => GroupScreen(
-                      title: child.name,
-                      path: [...path, child.name],
-                      node: child,
-                    ),
-                  ),
-                );
-              },
+          const SizedBox(height: 16),
+          Center(
+            child: BalanceWidget(
+              balance: baseBalance,
+              expenses: expensesTotal,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            alignment: WrapAlignment.center,
+            children: [
+              ...children.map(
+                (child) => CategoryCircleWidget(
+                  title: child.name,
+                  color: colorForGroup(child.name),
+                  onTap: () async {
+                    if (child.children.isEmpty) {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => OperationsScreen(
+                            groupName: child.name,
+                            groupPath: [...widget.path, child.name],
+                          ),
+                        ),
+                      );
+                    } else {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => GroupScreen(
+                            title: child.name,
+                            path: [...widget.path, child.name],
+                            node: child,
+                          ),
+                        ),
+                      );
+                    }
+                    await fetchExpenses();
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
           Center(
             child: OutlinedButton(
               onPressed: () async {
                 await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => GroupEditScreen(
-                      parentPath: path,
-                      parentName: title,
+                      parentPath: widget.path,
+                      parentName: widget.title,
                     ),
                   ),
                 );
               },
-              child: const Text('(Додати)'),
+              child: const Text('Додати категорію'),
             ),
           ),
         ],

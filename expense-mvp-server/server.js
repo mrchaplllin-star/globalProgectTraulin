@@ -348,8 +348,11 @@ app.get("/ops", (req, res) => {
     }
     return true;
   });
-  const total = filtered.reduce((sum, op) => sum + op.amount, 0);
-  res.json({ total, items: filtered });
+  const total = filtered.reduce((sum, op) => {
+    const amount = typeof op.amount === "number" ? op.amount : 0;
+    return op.type === "income" ? sum + amount : sum - amount;
+  }, 0);
+  res.json({ total, items: filtered, list: filtered });
 });
 
 app.get("/expenses", (req, res) => {
