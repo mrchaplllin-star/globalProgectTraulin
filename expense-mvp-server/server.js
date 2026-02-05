@@ -234,6 +234,45 @@ const saveOps = (ops) => {
   fs.writeFileSync(opsFile, JSON.stringify(ops, null, 2));
 };
 
+const normalizePathParts = (parts) => {
+  if (!Array.isArray(parts)) return [];
+  const filtered = parts.map((part) => part.toString()).filter(Boolean);
+  if (filtered[0] === "Головна") return filtered.slice(1);
+  return filtered;
+};
+
+const parsePathQuery = (rawPath) =>
+  rawPath
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+const matchesNodeName = (nodeName, part) => {
+  if (!part) return false;
+  return nodeName === part || slugify(nodeName) === part.toLowerCase();
+};
+
+const findNodeByPath = (tree, pathParts) => {
+  if (!pathParts.length) return { name: "Головна", children: tree };
+  let current = { name: "Головна", children: tree };
+  for (const part of pathParts) {
+    const next = current.children.find((child) => matchesNodeName(child.name, part));
+    if (!next) return null;
+    current = next;
+  }
+  return current;
+};
+
+const collectLeafPaths = (node, prefix = []) => {
+  const currentPath = node.name === "Головна" ? prefix : [...prefix, node.name];
+  if (!node.children || node.children.length === 0) {
+    return [currentPath];
+  }
+  return node.children.flatMap((child) => collectLeafPaths(child, currentPath));
+};
+
+const toSlugPath = (parts) => parts.map(slugify).join("/");
+
 app.get("/health", (req, res) => res.json({ ok: true }));
 
 app.get("/tree", (req, res) => {
@@ -334,16 +373,13 @@ app.post("/op", (req, res) => {
 app.get("/ops", (req, res) => {
   const month = req.query.month || "";
   const pathFilter = req.query.path || "";
-  const pathParts = pathFilter
-    .split("/")
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const pathParts = parsePathQuery(pathFilter);
   const ops = loadOps();
   const filtered = ops.filter((op) => {
     const opMonth = op.datetime?.slice(0, 7);
     if (month && opMonth !== month) return false;
     if (pathParts.length > 0) {
-      const opPath = Array.isArray(op.groupPath) ? op.groupPath : [];
+      const opPath = normalizePathParts(op.groupPath);
       return pathParts.join("/") === opPath.join("/");
     }
     return true;
@@ -353,6 +389,50 @@ app.get("/ops", (req, res) => {
     return op.type === "income" ? sum + amount : sum - amount;
   }, 0);
   res.json({ total, items: filtered, list: filtered });
+});
+
+app.get("/stats", (req, res) => {
+  const pathQuery = req.query.path || "";
+  const pathParts = parsePathQuery(pathQuery);
+  const tree = loadTree();
+  const node = findNodeByPath(tree, pathParts);
+  if (!node) return res.status(404).json({ error: "Path not found" });
+
+  const leafPaths = collectLeafPaths(node);
+  const ops = loadOps();
+  const byCategory = {};
+  let totalExpense = 0;
+  let totalIncome = 0;
+
+  leafPaths.forEach((leafPath) => {
+    const leafSlugPath = toSlugPath(leafPath.slice(pathParts.length));
+    const leafTotals = ops.reduce(
+      (acc, op) => {
+        const opPath = normalizePathParts(op.groupPath);
+        const normalizedLeaf = normalizePathParts(leafPath);
+        if (opPath.join("/") !== normalizedLeaf.join("/")) return acc;
+        const amount = typeof op.amount === "number" ? op.amount : 0;
+        if (op.type === "income") {
+          acc.income += amount;
+        } else {
+          acc.expense += amount;
+        }
+        return acc;
+      },
+      { income: 0, expense: 0 }
+    );
+    const leafBalance = leafTotals.income - leafTotals.expense;
+    byCategory[leafSlugPath || toSlugPath(leafPath)] = leafBalance;
+    totalExpense += leafTotals.expense;
+    totalIncome += leafTotals.income;
+  });
+
+  res.json({
+    balance: totalIncome - totalExpense,
+    totalExpense,
+    totalIncome,
+    byCategory,
+  });
 });
 
 app.get("/expenses", (req, res) => {
